@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Matter from 'matter-js'
+import { createJansenLinkage } from './jansenLinkage'
 
 const Canvas = () => {
   const { Engine, World, Bodies, Body, Events, Constraint } = Matter
@@ -178,6 +179,35 @@ const Canvas = () => {
     setSelectedJoint(null)
   }
 
+  // Load Jansen linkage template
+  const handleLoadJansen = () => {
+    handleClear()
+    const engine = engineRef.current
+    const { joints: jansenJoints, rods: jansenRods } = createJansenLinkage(
+      engine.world,
+      WORLD_WIDTH / 2 - 100,
+      WORLD_HEIGHT - GROUND_HEIGHT - 50,
+      1.5
+    )
+    
+    // Map the Jansen joints to our format
+    const mappedJoints = jansenJoints.map((j, idx) => ({
+      id: nextIdRef.current++,
+      body: j.body,
+      label: j.label,
+    }))
+    
+    // Map the Jansen rods to our format
+    const mappedRods = jansenRods.map((r, idx) => ({
+      id: nextIdRef.current++,
+      constraint: r.constraint,
+      label: r.label,
+    }))
+    
+    setJoints(mappedJoints)
+    setRods(mappedRods)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#f9fafb' }}>
       {/* Controls */}
@@ -216,6 +246,23 @@ const Canvas = () => {
             onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
           >
             Clear
+          </button>
+          <button
+            onClick={handleLoadJansen}
+            style={{
+              padding: '0.5rem 1.5rem',
+              borderRadius: '0.375rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              border: 'none',
+              transition: 'background-color 0.2s',
+              backgroundColor: '#8b5cf6',
+              color: '#fff',
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#7c3aed'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#8b5cf6'}
+          >
+            Load Jansen Leg
           </button>
           <div style={{ fontSize: '0.875rem', color: '#4b5563', flex: 1 }}>
             <p style={{ fontWeight: '500', margin: 0 }}>Click to place joints • Click two joints to connect with a rod</p>
