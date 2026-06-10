@@ -5,6 +5,7 @@ const Canvas = () => {
   const { Engine, World, Bodies, Body, Events, Constraint } = Matter
   const canvasRef = useRef(null)
   const engineRef = useRef(null)
+  const groundRef = useRef(null)
   const [joints, setJoints] = useState([])
   const [rods, setRods] = useState([])
   const [selectedJoint, setSelectedJoint] = useState(null)
@@ -14,6 +15,7 @@ const Canvas = () => {
   const JOINT_RADIUS = 8
   const WORLD_WIDTH = 1200
   const WORLD_HEIGHT = 600
+  const GROUND_HEIGHT = 60
 
   // Initialize Matter.js world
   useEffect(() => {
@@ -25,6 +27,15 @@ const Canvas = () => {
     const canvas = canvasRef.current
     canvas.width = WORLD_WIDTH
     canvas.height = WORLD_HEIGHT
+
+    // Create ground plane
+    const ground = Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - GROUND_HEIGHT / 2, WORLD_WIDTH, GROUND_HEIGHT, {
+      isStatic: true,
+      friction: 0.8,
+      frictionStatic: 1,
+    })
+    World.addBody(world, ground)
+    groundRef.current = ground
 
     // Animation loop
     const animate = () => {
@@ -38,6 +49,16 @@ const Canvas = () => {
       ctx.strokeStyle = '#e5e4e7'
       ctx.lineWidth = 1
       ctx.strokeRect(0, 0, canvas.width, canvas.height)
+
+      // Draw ground plane
+      ctx.fillStyle = '#d1d5db'
+      ctx.fillRect(0, WORLD_HEIGHT - GROUND_HEIGHT, WORLD_WIDTH, GROUND_HEIGHT)
+      ctx.strokeStyle = '#9ca3af'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(0, WORLD_HEIGHT - GROUND_HEIGHT)
+      ctx.lineTo(WORLD_WIDTH, WORLD_HEIGHT - GROUND_HEIGHT)
+      ctx.stroke()
 
       // Draw rods
       ctx.strokeStyle = '#6b6375'
@@ -80,6 +101,11 @@ const Canvas = () => {
     const rect = canvas.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
+
+    // Don't allow joints in ground area
+    if (y > WORLD_HEIGHT - GROUND_HEIGHT) {
+      return
+    }
 
     // Check if clicking on existing joint
     const clickedJoint = joints.find(
