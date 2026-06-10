@@ -8,6 +8,8 @@ const Canvas = () => {
   const engineRef = useRef(null)
   const groundRef = useRef(null)
   const crankRef = useRef(null)
+  const anchorRef = useRef(null)
+  const footRef = useRef(null)
   const [joints, setJoints] = useState([])
   const [rods, setRods] = useState([])
   const [selectedJoint, setSelectedJoint] = useState(null)
@@ -47,6 +49,20 @@ const Canvas = () => {
         if (crankRef.current) {
           Body.rotate(crankRef.current, crankSpeed)
         }
+        
+        // Apply walking motion to anchor
+        if (anchorRef.current && footRef.current) {
+          const footY = footRef.current.position.y
+          const footOnGround = footY > WORLD_HEIGHT - GROUND_HEIGHT - JOINT_RADIUS * 2
+          
+          // Move anchor forward when foot is on ground
+          if (footOnGround) {
+            Body.setVelocity(anchorRef.current, { x: 0.5, y: 0 })
+          } else {
+            Body.setVelocity(anchorRef.current, { x: 0, y: 0 })
+          }
+        }
+        
         Engine.update(engine)
       }
 
@@ -213,6 +229,16 @@ const Canvas = () => {
     // Set crank reference (second joint, the rotating one)
     if (mappedJoints.length > 1) {
       crankRef.current = mappedJoints[1].body
+    }
+    
+    // Set anchor reference (first joint, the fixed pivot)
+    if (mappedJoints.length > 0) {
+      anchorRef.current = mappedJoints[0].body
+    }
+    
+    // Set foot reference (last joint, the one that touches ground)
+    if (mappedJoints.length > 0) {
+      footRef.current = mappedJoints[mappedJoints.length - 1].body
     }
     
     setJoints(mappedJoints)
