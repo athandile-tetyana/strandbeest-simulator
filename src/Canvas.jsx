@@ -7,10 +7,12 @@ const Canvas = () => {
   const canvasRef = useRef(null)
   const engineRef = useRef(null)
   const groundRef = useRef(null)
+  const crankRef = useRef(null)
   const [joints, setJoints] = useState([])
   const [rods, setRods] = useState([])
   const [selectedJoint, setSelectedJoint] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [crankSpeed, setCrankSpeed] = useState(0.01)
   const nextIdRef = useRef(0)
 
   const JOINT_RADIUS = 8
@@ -41,6 +43,10 @@ const Canvas = () => {
     // Animation loop
     const animate = () => {
       if (isPlaying) {
+        // Apply crank rotation
+        if (crankRef.current) {
+          Body.rotate(crankRef.current, crankSpeed)
+        }
         Engine.update(engine)
       }
 
@@ -204,6 +210,11 @@ const Canvas = () => {
       label: r.label,
     }))
     
+    // Set crank reference (second joint, the rotating one)
+    if (mappedJoints.length > 1) {
+      crankRef.current = mappedJoints[1].body
+    }
+    
     setJoints(mappedJoints)
     setRods(mappedRods)
   }
@@ -264,6 +275,19 @@ const Canvas = () => {
           >
             Load Jansen Leg
           </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '200px' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: '500', color: '#4b5563' }}>Speed:</label>
+            <input
+              type="range"
+              min="0.001"
+              max="0.05"
+              step="0.001"
+              value={crankSpeed}
+              onChange={(e) => setCrankSpeed(parseFloat(e.target.value))}
+              style={{ flex: 1 }}
+            />
+            <span style={{ fontSize: '0.75rem', color: '#6b7280', minWidth: '40px' }}>{crankSpeed.toFixed(3)}</span>
+          </div>
           <div style={{ fontSize: '0.875rem', color: '#4b5563', flex: 1 }}>
             <p style={{ fontWeight: '500', margin: 0 }}>Click to place joints • Click two joints to connect with a rod</p>
             <p style={{ fontSize: '0.75rem', marginTop: '0.25rem', margin: 0 }}>Joints: {joints.length} | Rods: {rods.length}</p>
