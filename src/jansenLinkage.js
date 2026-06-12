@@ -1,120 +1,96 @@
 import Matter from 'matter-js'
 
-const { Bodies, Constraint } = Matter
+const { Bodies, Constraint, World } = Matter
+
+function dist(a, b) {
+  return Math.hypot(b.x - a.x, b.y - a.y)
+}
+
+function makeBody(world, x, y, r, isStatic = false) {
+  const body = Bodies.circle(x, y, r, isStatic
+    ? { isStatic: true, friction: 0.8, frictionStatic: 1 }
+    : { friction: 0.5, frictionAir: 0.02, restitution: 0.1 }
+  )
+  World.addBody(world, body)
+  return body
+}
 
 /**
- * Creates a Jansen linkage - a planar mechanism that walks
- * Returns an object with joints array and rods array
+ * Creates a Jansen-style walking linkage.
+ * Joint positions are computed so constraints are satisfiable from the start —
+ * this prevents the mechanism from exploding when physics begins.
+ *
+ * @param {Matter.World} world
+ * @param {number} startX - X of fixed pivot A
+ * @param {number} startY - Y of fixed pivot A
+ * @param {number} scale  - uniform scale factor
  */
 export function createJansenLinkage(world, startX, startY, scale = 1) {
-  // Jansen linkage proportions (scaled)
-  const dims = {
-    crank: 7.8 * scale,
-    link1: 39 * scale,
-    link2: 50 * scale,
-    link3: 50 * scale,
-    link4: 61.9 * scale,
-    link5: 55 * scale,
-    link6: 40 * scale,
-    link7: 39.3 * scale,
-    link8: 36.7 * scale,
-    link9: 65.7 * scale,
+  const s = scale
+  const r = 5 // joint radius
+
+  // ── Joint positions ─────────────────────────────────────────────────────────
+  // Placed so that every constraint length equals the actual Euclidean distance
+  // between its two endpoints. This is the key to a stable simulation.
+  const pos = {
+    A: { x: startX,            y: startY },              // Fixed pivot (static)
+    B: { x: startX + 15 * s,  y: startY },              // Crank tip (driven)
+    C: { x: startX - 8  * s,  y: startY - 38 * s },     // Upper link
+    D: { x: startX + 22 * s,  y: startY - 40 * s },     // Coupler
+    E: { x: startX - 18 * s,  y: startY - 75 * s },     // Left arm
+    F: { x: startX + 38 * s,  y: startY - 65 * s },     // Right arm
+    G: { x: startX + 52 * s,  y: startY - 18 * s },     // Lower connector
+    H: { x: startX + 40 * s,  y: startY + 55 * s },     // Foot
   }
 
-  // Joint radius
-  const jointRadius = 4
+  // ── Bodies ───────────────────────────────────────────────────────────────────
+  const A = makeBody(world, pos.A.x, pos.A.y, r, true)   // static — MUST be added
+  const B = makeBody(world, pos.B.x, pos.B.y, r)          // crank tip
+  const C = makeBody(world, pos.C.x, pos.C.y, r)
+  const D = makeBody(world, pos.D.x, pos.D.y, r)
+  const E = makeBody(world, pos.E.x, pos.E.y, r)
+  const F = makeBody(world, pos.F.x, pos.F.y, r)
+  const G = makeBody(world, pos.G.x, pos.G.y, r)
+  const H = makeBody(world, pos.H.x, pos.H.y, r)         // foot
 
-  // Create joints (circular bodies)
-  const joints = []
-  let jointId = 0
+  const joints = [
+    { body: A, label: 'A' },
+    { body: B, label: 'B' },
+    { body: C, label: 'C' },
+    { body: D, label: 'D' },
+    { body: E, label: 'E' },
+    { body: F, label: 'F' },
+    { body: G, label: 'G' },
+    { body: H, label: 'H' },
+  ].map((j, i) => ({ id: i, ...j }))
 
-  // Fixed pivot point A (at center)
-  const A = Bodies.circle(startX, startY, jointRadius, { isStatic: true })
-  joints.push({ id: jointId++, body: A, label: 'A' })
-
-  // Crank joint (will rotate)
-  const B = Bodies.circle(startX + dims.crank, startY, jointRadius, {
-    friction: 0.5,
-    frictionAir: 0.01,
-    restitution: 0.2,
-  })
-  Matter.World.addBody(world, B)
-  joints.push({ id: jointId++, body: B, label: 'B' })
-
-  // Intermediate joints
-  const C = Bodies.circle(startX, startY - dims.link1, jointRadius, {
-    friction: 0.5,
-    frictionAir: 0.01,
-    restitution: 0.2,
-  })
-  Matter.World.addBody(world, C)
-  joints.push({ id: jointId++, body: C, label: 'C' })
-
-  const D = Bodies.circle(startX + dims.crank * 1.5, startY - dims.link2 * 0.8, jointRadius, {
-    friction: 0.5,
-    frictionAir: 0.01,
-    restitution: 0.2,
-  })
-  Matter.World.addBody(world, D)
-  joints.push({ id: jointId++, body: D, label: 'D' })
-
-  const E = Bodies.circle(startX - dims.crank * 0.8, startY - dims.link3, jointRadius, {
-    friction: 0.5,
-    frictionAir: 0.01,
-    restitution: 0.2,
-  })
-  Matter.World.addBody(world, E)
-  joints.push({ id: jointId++, body: E, label: 'E' })
-
-  const F = Bodies.circle(startX + dims.crank * 2, startY - dims.link4 * 0.7, jointRadius, {
-    friction: 0.5,
-    frictionAir: 0.01,
-    restitution: 0.2,
-  })
-  Matter.World.addBody(world, F)
-  joints.push({ id: jointId++, body: F, label: 'F' })
-
-  const G = Bodies.circle(startX + dims.crank * 2.5, startY + dims.link5 * 0.3, jointRadius, {
-    friction: 0.5,
-    frictionAir: 0.01,
-    restitution: 0.2,
-  })
-  Matter.World.addBody(world, G)
-  joints.push({ id: jointId++, body: G, label: 'G' })
-
-  // Foot (connects to ground)
-  const H = Bodies.circle(startX + dims.crank * 2.2, startY + dims.link6, jointRadius, {
-    friction: 0.8,
-    frictionAir: 0.02,
-    restitution: 0.1,
-  })
-  Matter.World.addBody(world, H)
-  joints.push({ id: jointId++, body: H, label: 'H' })
-
-  // Create rigid constraints (rods)
-  const rods = []
-  const constraints = [
-    { bodyA: A, bodyB: B, len: dims.crank, label: 'Crank (AB)' },
-    { bodyA: A, bodyB: C, len: dims.link1, label: 'AC' },
-    { bodyA: B, bodyB: D, len: dims.link2, label: 'BD' },
-    { bodyA: C, bodyB: D, len: dims.link3, label: 'CD' },
-    { bodyA: D, bodyB: E, len: dims.link4, label: 'DE' },
-    { bodyA: E, bodyB: F, len: dims.link5, label: 'EF' },
-    { bodyA: F, bodyB: G, len: dims.link6, label: 'FG' },
-    { bodyA: G, bodyB: H, len: dims.link7, label: 'GH' },
-    { bodyA: F, bodyB: H, len: dims.link8, label: 'FH' },
+  // ── Constraints (rods) ───────────────────────────────────────────────────────
+  // Length is computed from the actual positions — always satisfiable.
+  const pairs = [
+    [A, B, 'AB (crank)'],
+    [A, C, 'AC'],
+    [B, D, 'BD'],
+    [C, D, 'CD'],
+    [C, E, 'CE'],
+    [D, F, 'DF'],
+    [E, F, 'EF'],
+    [F, G, 'FG'],
+    [G, H, 'GH'],
+    [F, H, 'FH'],
   ]
 
-  constraints.forEach((c, idx) => {
+  const rods = pairs.map(([bA, bB, label], idx) => {
+    const length = dist(bA.position, bB.position)
     const constraint = Constraint.create({
-      bodyA: c.bodyA,
-      bodyB: c.bodyB,
-      length: c.len,
-      stiffness: 1,
+      bodyA: bA,
+      bodyB: bB,
+      length,
+      stiffness: 0.9,
+      damping: 0.05,
     })
-    Matter.World.addConstraint(world, constraint)
-    rods.push({ id: idx, constraint, label: c.label })
+    World.addConstraint(world, constraint)
+    return { id: idx, constraint, label }
   })
 
-  return { joints, rods, anchor: joints[0] }
+  return { joints, rods, crankBody: B, anchor: A }
 }
