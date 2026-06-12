@@ -54,7 +54,7 @@ const Canvas = () => {
       if (isPlayingRef.current) {
         // Drive the crank by setting angular velocity
         if (crankBodyRef.current) {
-          Matter.Body.setAngularVelocity(crankBodyRef.current, crankSpeedRef.current * 8)
+          Matter.Body.setAngularVelocity(crankBodyRef.current, crankSpeedRef.current * 3)
         }
         Matter.Engine.update(engine, 1000 / 60)
       }

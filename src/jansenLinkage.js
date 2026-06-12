@@ -45,6 +45,7 @@ export function createJansenLinkage(world, startX, startY, scale = 1) {
 
   // ── Bodies ───────────────────────────────────────────────────────────────────
   const A = makeBody(world, pos.A.x, pos.A.y, r, true)   // static — MUST be added
+  const A2 = makeBody(world, pos.C.x, pos.C.y, r, true)   // second static pivot near C
   const B = makeBody(world, pos.B.x, pos.B.y, r)          // crank tip
   const C = makeBody(world, pos.C.x, pos.C.y, r)
   const D = makeBody(world, pos.D.x, pos.D.y, r)
@@ -69,6 +70,7 @@ export function createJansenLinkage(world, startX, startY, scale = 1) {
   const pairs = [
     [A, B, 'AB (crank)'],
     [A, C, 'AC'],
+    [A2, C, 'A2C (frame)'],
     [B, D, 'BD'],
     [C, D, 'CD'],
     [C, E, 'CE'],
