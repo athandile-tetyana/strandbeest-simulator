@@ -18,6 +18,9 @@ const Canvas = () => {
   const selectedRef    = useRef(null)   // selected joint id
   const crankBodyRef   = useRef(null)
   const crankSpeedRef  = useRef(0.025)
+  const crankPivotRef  = useRef({ x: 0, y: 0 })
+  const crankRadiusRef = useRef(0)
+  const crankAngleRef  = useRef(0)
   const groundRef      = useRef(null)
   const nextIdRef      = useRef(0)
 
@@ -52,9 +55,20 @@ const Canvas = () => {
 
       // ── Physics step ────────────────────────────────────────────────────────
       if (isPlayingRef.current) {
-        // Drive the crank by setting angular velocity
+        // Drive the crank by manually orbiting it around the pivot
         if (crankBodyRef.current) {
-          Matter.Body.setAngularVelocity(crankBodyRef.current, crankSpeedRef.current * 3)
+          crankAngleRef.current += crankSpeedRef.current
+          const { x: ax, y: ay } = crankPivotRef.current
+          const r = crankRadiusRef.current
+          const angle = crankAngleRef.current
+          Matter.Body.setPosition(crankBodyRef.current, {
+            x: ax + Math.cos(angle) * r,
+            y: ay + Math.sin(angle) * r,
+          })
+          Matter.Body.setVelocity(crankBodyRef.current, {
+            x: -Math.sin(angle) * r * crankSpeedRef.current * 60,
+            y:  Math.cos(angle) * r * crankSpeedRef.current * 60,
+          })
         }
         Matter.Engine.update(engine, 1000 / 60)
       }
@@ -174,6 +188,12 @@ const Canvas = () => {
 
     // Store crank body reference for driving
     crankBodyRef.current = result.crankBody
+
+    const pivot = result.anchor.position
+    const crank = result.crankBody.position
+    crankPivotRef.current  = { x: pivot.x, y: pivot.y }
+    crankRadiusRef.current = Math.hypot(crank.x - pivot.x, crank.y - pivot.y)
+    crankAngleRef.current  = 0
 
     jointsRef.current = mappedJoints
     rodsRef.current   = mappedRods
